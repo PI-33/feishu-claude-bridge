@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tgz
+.env
+config.env
+.DS_Store
+.claude/
+.claude.json
+
+# Runtime data (lives in ~/.claude-to-im/, not in repo)
+runtime/
+logs/
+data/
