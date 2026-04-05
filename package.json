@@ -1,0 +1,24 @@
+{
+  "name": "feishu-claude-bridge",
+  "version": "1.0.0",
+  "description": "Feishu-Claude Code Bridge — connects Feishu to Claude Code CLI sessions",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.62",
+    "@larksuiteoapi/node-sdk": "^1.60.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
