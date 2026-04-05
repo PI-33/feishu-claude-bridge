@@ -146,11 +146,12 @@ function resumeCliSession(ctx: AppContext, chatId: string, target: CliSessionInf
   return [
     `${icon} 已恢复 CLI 会话`,
     '',
-    `Session: \`${target.sdkSessionId.slice(0, 8)}...\``,
     `Project: \`${target.project}\``,
     `CWD: \`${target.cwd}\``,
     target.slug ? `Slug: \`${target.slug}\`` : '',
     `"${prompt}"`,
+    '',
+    `终端恢复: \`claude --resume ${target.sdkSessionId}\``,
     '',
     '现在可以直接发消息继续对话。',
   ].filter(Boolean).join('\n');
@@ -470,14 +471,20 @@ async function handleCommand(
 
     case '/status': {
       const binding = resolveBinding(ctx, msg.chatId);
-      response = [
+      const lines = [
         '**Bridge Status**',
         '',
-        `Session: \`${binding.codepilotSessionId.slice(0, 8)}...\``,
         `CWD: \`${binding.workingDirectory || '~'}\``,
         `Mode: **${binding.mode}**`,
         `Model: \`${binding.model || 'default'}\``,
-      ].join('\n');
+      ];
+      if (binding.sdkSessionId) {
+        lines.push('', `SDK Session (用于终端 \`claude --resume\`):`);
+        lines.push(`\`${binding.sdkSessionId}\``);
+      } else {
+        lines.push('', 'SDK Session: 尚未建立（发一条消息后生成）');
+      }
+      response = lines.join('\n');
       break;
     }
 
