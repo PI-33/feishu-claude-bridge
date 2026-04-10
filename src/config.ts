@@ -1,11 +1,11 @@
 /**
- * Configuration loader — reads ~/.claude-to-im/config.env.
+ * Configuration loader.
  *
- * Feishu-only: non-feishu config keys are silently ignored.
+ * Reads ./config.env from the project root directory.
+ * Runtime data (sessions, logs, PID files) lives in .bridge/ under the project root.
  */
 
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 export interface Config {
@@ -20,8 +20,15 @@ export interface Config {
   autoApprove: boolean;
 }
 
-export const CTI_HOME = process.env.CTI_HOME || path.join(os.homedir(), '.claude-to-im');
-export const CONFIG_PATH = path.join(CTI_HOME, 'config.env');
+/**
+ * Project root — launchd sets WorkingDirectory to the project dir,
+ * and `npm run dev` also runs from the project dir, so cwd() is reliable.
+ */
+const PROJECT_DIR = process.cwd();
+
+/** All data lives under the project directory by default. Override with CTI_HOME env var. */
+export const CTI_HOME = process.env.CTI_HOME || path.join(PROJECT_DIR, '.bridge');
+export const CONFIG_PATH = path.join(PROJECT_DIR, 'config.env');
 
 function parseEnvFile(content: string): Map<string, string> {
   const entries = new Map<string, string>();

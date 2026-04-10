@@ -63,14 +63,11 @@ npm run build
 ## 配置
 
 ```bash
-# 创建配置目录
-mkdir -p ~/.claude-to-im
-
 # 复制配置模板并编辑
-cp config.env.example ~/.claude-to-im/config.env
+cp config.env.example config.env
 ```
 
-编辑 `~/.claude-to-im/config.env`：
+编辑 `config.env`：
 
 ```bash
 # 必填 —— 飞书应用凭证
@@ -102,7 +99,9 @@ CTI_FEISHU_REQUIRE_MENTION=true
 
 ## 启动
 
-### 方式一：守护进程（推荐）
+### 方式一：守护进程（macOS，推荐）
+
+> `daemon.sh` 使用 macOS `launchd` 管理进程。Linux / Windows 用户请使用方式二，或自行配置 pm2、systemd 等进程管理器。
 
 ```bash
 # 启动（macOS 使用 launchd 管理，自动重启）
@@ -118,10 +117,14 @@ bash scripts/daemon.sh logs
 bash scripts/daemon.sh stop
 ```
 
-### 方式二：前台运行（调试用）
+### 方式二：前台运行（跨平台）
 
 ```bash
+# 开发模式（直接运行 TypeScript）
 npm run dev
+
+# 或使用构建后的产物运行
+npm start
 ```
 
 启动后，在飞书中找到机器人发送任意消息即可开始对话。
@@ -150,11 +153,10 @@ npm run dev
 
 ## 数据存储
 
-所有数据保存在 `~/.claude-to-im/`：
+配置文件 `config.env` 位于项目根目录。所有运行时数据保存在项目目录下的 `.bridge/`：
 
 ```
-~/.claude-to-im/
-├── config.env          # 配置文件
+.bridge/
 ├── data/
 │   ├── sessions.json   # 会话记录
 │   ├── bindings.json   # 频道绑定
@@ -189,7 +191,7 @@ claude --resume <sdk-session-id>
 ```
 src/
 ├── main.ts              # 入口：组装 AppContext、启动守护进程
-├── config.ts            # 配置加载（读取 ~/.claude-to-im/config.env）
+├── config.ts            # 配置加载（读取 config.env）
 ├── types.ts             # 类型定义
 ├── feishu.ts            # 飞书客户端：WebSocket + REST + CardKit v2
 ├── bridge.ts            # 消息编排：命令路由 + 会话管理

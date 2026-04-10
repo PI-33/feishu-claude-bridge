@@ -1,8 +1,7 @@
 /**
  * JSON file-backed data store.
  *
- * In-memory Maps with write-through persistence to JSON files in ~/.claude-to-im/data/.
- * Data format fully compatible with the original Claude-to-IM-skill store.
+ * In-memory Maps with write-through persistence to JSON files in .bridge/data/.
  */
 
 import fs from 'node:fs';

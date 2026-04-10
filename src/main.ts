@@ -135,6 +135,31 @@ async function main(): Promise<void> {
   // Keep event loop alive
   setInterval(() => { /* keepalive */ }, 45_000);
 
+  // Watchdog: exit if WebSocket stays disconnected too long so launchd restarts us
+  const HEALTH_CHECK_INTERVAL = 2 * 60 * 1000;
+  const MAX_UNHEALTHY_MS = 10 * 60 * 1000;
+  let unhealthySince: number | null = null;
+
+  setInterval(() => {
+    const state = feishu.getWsReadyState();
+    if (state === 1) { // WebSocket.OPEN
+      unhealthySince = null;
+      return;
+    }
+    if (!unhealthySince) {
+      unhealthySince = Date.now();
+      console.warn(`[watchdog] WebSocket not connected (readyState=${state}), monitoring...`);
+      return;
+    }
+    const downMs = Date.now() - unhealthySince;
+    if (downMs > MAX_UNHEALTHY_MS) {
+      console.error(`[watchdog] WebSocket down for ${Math.round(downMs / 1000)}s, exiting for launchd restart`);
+      writeStatus({ running: false, lastExitReason: `watchdog: ws down ${Math.round(downMs / 1000)}s` });
+      process.exit(1);
+    }
+    console.warn(`[watchdog] WebSocket still down (${Math.round(downMs / 1000)}s / ${MAX_UNHEALTHY_MS / 1000}s threshold)`);
+  }, HEALTH_CHECK_INTERVAL);
+
   // Run bridge loop (blocks until feishu stops)
   await runBridgeLoop(ctx);
 }

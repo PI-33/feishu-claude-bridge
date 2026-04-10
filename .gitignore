@@ -7,7 +7,5 @@ config.env
 .claude/
 .claude.json
 
-# Runtime data (lives in ~/.claude-to-im/, not in repo)
-runtime/
-logs/
-data/
+# Runtime data
+.bridge/

@@ -484,7 +484,8 @@ export class FeishuClient {
           footer.cost = `$${tokenUsage.cost_usd.toFixed(4)}`;
         }
         const totalTokens = inTok + outTok;
-        const contextPct = (totalTokens / 200000 * 100).toFixed(1);
+        const CONTEXT_WINDOW_TOKENS = 200_000; // Claude Sonnet 4 context window
+        const contextPct = (totalTokens / CONTEXT_WINDOW_TOKENS * 100).toFixed(1);
         footer.context = `${contextPct}%`;
       }
 
@@ -522,6 +523,12 @@ export class FeishuClient {
 
   hasActiveCard(chatId: string): boolean {
     return this.activeCards.has(chatId);
+  }
+
+  /** Return the underlying WebSocket readyState (1 = OPEN), or null if no instance. */
+  getWsReadyState(): number | null {
+    const ws = (this.wsClient as any)?.wsConfig?.getWSInstance?.();
+    return ws?.readyState ?? null;
   }
 
   // ── Streaming adapter interface ────────────────────────────

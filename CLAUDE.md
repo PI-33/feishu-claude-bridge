@@ -25,11 +25,10 @@ npm run build
 ## Configure
 
 ```bash
-mkdir -p ~/.claude-to-im
-cp config.env.example ~/.claude-to-im/config.env
+cp config.env.example config.env
 ```
 
-Edit `~/.claude-to-im/config.env`:
+Edit `config.env`:
 
 ```bash
 # ── Required ──
@@ -85,7 +84,9 @@ bash scripts/daemon.sh logs
 bash scripts/daemon.sh stop
 ```
 
-Or foreground for debugging: `npm run dev`
+Or foreground for debugging: `npm run dev` or `npm start` (requires build first)
+
+> `daemon.sh` is macOS-only (uses launchd). On other platforms, use `npm run dev` or a process manager like pm2 / systemd.
 
 ## Verify It Works
 
@@ -116,7 +117,7 @@ npx tsx --test src/__tests__/integration.test.ts   # 6 full integration tests
 
 | Symptom | Fix |
 |---------|-----|
-| `Cannot start: missing appId or appSecret` | Check `~/.claude-to-im/config.env` exists and has credentials |
+| `Cannot start: missing appId or appSecret` | Check `config.env` exists in the project root and has credentials |
 | WebSocket doesn't connect | Enable "使用长连接接收事件" in Feishu dev console |
 | Bot doesn't respond in group | @mention the bot, or set `CTI_FEISHU_REQUIRE_MENTION=false` |
 | Permission denied / 403 | Add missing scopes in Feishu dev console and republish |

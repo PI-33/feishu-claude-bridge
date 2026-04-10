@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.js",
+    "start": "node dist/daemon.mjs",
     "typecheck": "tsc --noEmit",
     "dev": "tsx src/main.ts"
   },

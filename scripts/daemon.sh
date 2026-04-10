@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-CTI_HOME="${CTI_HOME:-$HOME/.claude-to-im}"
 BRIDGE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+CTI_HOME="${CTI_HOME:-$BRIDGE_DIR/.bridge}"
 PID_FILE="$CTI_HOME/runtime/bridge.pid"
 STATUS_FILE="$CTI_HOME/runtime/status.json"
 LOG_FILE="$CTI_HOME/logs/bridge.log"
@@ -59,21 +59,19 @@ show_last_exit_reason() {
 build_env_dict() {
   local indent="            "
   local dict=""
+  local seen=" "
 
   for var in HOME PATH USER SHELL LANG TMPDIR http_proxy https_proxy HTTP_PROXY HTTPS_PROXY no_proxy NO_PROXY ALL_PROXY API_TIMEOUT_MS CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC ANTHROPIC_MODEL ANTHROPIC_SMALL_FAST_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL ANTHROPIC_DEFAULT_OPUS_MODEL ANTHROPIC_DEFAULT_HAIKU_MODEL; do
     local val="${!var:-}"
     [ -z "$val" ] && continue
+    seen="$seen$var "
     dict+="${indent}<key>${var}</key>\n${indent}<string>${val}</string>\n"
   done
 
   while IFS='=' read -r name val; do
-    case "$name" in CTI_*)
-      dict+="${indent}<key>${name}</key>\n${indent}<string>${val}</string>\n"
-      ;; esac
-  done < <(env)
-
-  while IFS='=' read -r name val; do
-    case "$name" in ANTHROPIC_*)
+    case "$name" in CTI_*|ANTHROPIC_*)
+      case "$seen" in *" $name "*) continue ;; esac
+      seen="$seen$name "
       dict+="${indent}<key>${name}</key>\n${indent}<string>${val}</string>\n"
       ;; esac
   done < <(env)
@@ -107,9 +105,9 @@ generate_plist() {
     <string>${BRIDGE_DIR}</string>
 
     <key>StandardOutPath</key>
-    <string>${LOG_FILE}</string>
+    <string>/dev/null</string>
     <key>StandardErrorPath</key>
-    <string>${LOG_FILE}</string>
+    <string>/dev/null</string>
 
     <key>RunAtLoad</key>
     <false/>
@@ -133,9 +131,10 @@ PLIST
 
 supervisor_start() {
   launchctl bootout "gui/$(id -u)/$LAUNCHD_LABEL" 2>/dev/null || true
+  sleep 1
   generate_plist
   launchctl bootstrap "gui/$(id -u)" "$PLIST_FILE"
-  launchctl kickstart -k "gui/$(id -u)/$LAUNCHD_LABEL"
+  launchctl kickstart "gui/$(id -u)/$LAUNCHD_LABEL"
 }
 
 supervisor_stop() {
@@ -174,20 +173,19 @@ case "${1:-help}" in
       exit 1
     fi
 
-    [ -f "$CTI_HOME/config.env" ] && set -a && source "$CTI_HOME/config.env" && set +a
+    [ -f "$BRIDGE_DIR/config.env" ] && set -a && source "$BRIDGE_DIR/config.env" && set +a
 
     clean_env
     echo "Starting bridge..."
     supervisor_start
 
     STARTED=false
-    for _ in $(seq 1 10); do
+    for _ in $(seq 1 20); do
       sleep 1
       if status_running; then
         STARTED=true
         break
       fi
-      supervisor_is_running || break
     done
 
     if [ "$STARTED" = "true" ]; then

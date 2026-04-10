@@ -71,13 +71,13 @@ Feishu app ──WebSocket──▶ WSClient (monkey-patched for card callbacks)
 
 ## File-by-File Guide
 
-### `main.ts` (146 lines) — Entry point
+### `main.ts` (172 lines) — Entry point
 
-Assembles `AppContext` → resolves Claude CLI path → starts `FeishuClient` → writes PID/status files → runs `bridge.runBridgeLoop()` → handles SIGTERM/SIGINT graceful shutdown (denies all pending permissions, stops WebSocket).
+Assembles `AppContext` → resolves Claude CLI path → starts `FeishuClient` → writes PID/status files → runs `bridge.runBridgeLoop()` → handles SIGTERM/SIGINT graceful shutdown (denies all pending permissions, stops WebSocket). Includes a WebSocket watchdog that exits after 10 minutes of disconnection so launchd can restart the process.
 
-### `config.ts` (73 lines) — Configuration loader
+### `config.ts` (84 lines) — Configuration loader
 
-Reads `~/.claude-to-im/config.env` (simple `KEY=VALUE` parser). Returns a `Config` object. Non-feishu keys are silently ignored. The `CTI_HOME` constant (`~/.claude-to-im`) is used throughout the project.
+Reads `./config.env` from the project root (simple `KEY=VALUE` parser). Returns a `Config` object. The `CTI_HOME` constant (defaults to `.bridge/` under the project directory) is used for all runtime data.
 
 ### `types.ts` (235 lines) — All type definitions
 
@@ -91,9 +91,9 @@ Central type file. Key types:
 - `PermissionRequestInfo` / `PermissionResult` — permission flow types
 - `CliSessionInfo` — metadata for discovered local CLI sessions
 
-### `feishu.ts` (1,040 lines) — Feishu client
+### `feishu.ts` (~1,050 lines) — Feishu client
 
-The largest file. Handles all Feishu communication:
+The largest file. Handles all Feishu communication (includes `getWsReadyState()` for the watchdog):
 
 - **WebSocket lifecycle**: `start()` / `stop()`, bot identity resolution via REST API
 - **Monkey-patch**: Rewrites `type: "card"` → `type: "event"` in `WSClient.handleEventData` so card action callbacks reach the event dispatcher
@@ -147,7 +147,7 @@ The main loop and command router:
 
 ### `store.ts` (401 lines) — JSON file persistence
 
-In-memory Maps with write-through to JSON files in `~/.claude-to-im/data/`:
+In-memory Maps with write-through to JSON files in `.bridge/data/`:
 - `sessions.json` — bridge sessions
 - `bindings.json` — chat ↔ session bindings (keyed by `feishu:{chatId}`)
 - `permissions.json` — permission link records
@@ -191,7 +191,7 @@ Scans `~/.claude/projects/<project>/<uuid>.jsonl` files:
 
 ### `logger.ts` (82 lines) — Logging
 
-Overrides `console.log/error/warn` to write to `~/.claude-to-im/logs/bridge.log`. Secret masking (tokens, API keys, Bearer tokens). Log rotation at 10MB, keeps 3 rotated files.
+Overrides `console.log/error/warn` to write to `.bridge/logs/bridge.log`. Secret masking (tokens, API keys, Bearer tokens). Log rotation at 10MB, keeps 3 rotated files.
 
 ---
 
@@ -264,26 +264,29 @@ The stream is fully paused during this wait. Timeout: 5 minutes (auto-deny).
 
 ## Data Directory Layout
 
+Configuration lives at the project root; all runtime data lives under `.bridge/`:
+
 ```
-~/.claude-to-im/
+<project root>/
 ├── config.env                    # Configuration (see CLAUDE.md)
-├── data/
-│   ├── sessions.json             # { "uuid": { id, working_directory, model, ... } }
-│   ├── bindings.json             # { "feishu:chatId": { id, chatId, codepilotSessionId, sdkSessionId, ... } }
-│   ├── permissions.json          # { "toolUseId": { permissionRequestId, chatId, messageId, resolved } }
-│   ├── messages/
-│   │   └── {sessionId}.json      # [{ role: "user"|"assistant", content: "..." }, ...]
-│   ├── offsets.json              # Channel cursor offsets
-│   ├── dedup.json                # Message dedup keys with timestamps
-│   └── audit.json                # Outbound message audit trail (last 1000)
-├── logs/
-│   ├── bridge.log                # Current log (max 10MB)
-│   ├── bridge.log.1              # Rotated logs
-│   ├── bridge.log.2
-│   └── bridge.log.3
-└── runtime/
-    ├── bridge.pid                # Process ID file
-    └── status.json               # { running, pid, runId, startedAt, lastExitReason }
+└── .bridge/                      # Runtime data (gitignored)
+    ├── data/
+    │   ├── sessions.json         # { "uuid": { id, working_directory, model, ... } }
+    │   ├── bindings.json         # { "feishu:chatId": { id, chatId, codepilotSessionId, sdkSessionId, ... } }
+    │   ├── permissions.json      # { "toolUseId": { permissionRequestId, chatId, messageId, resolved } }
+    │   ├── messages/
+    │   │   └── {sessionId}.json  # [{ role: "user"|"assistant", content: "..." }, ...]
+    │   ├── offsets.json          # Channel cursor offsets
+    │   ├── dedup.json            # Message dedup keys with timestamps
+    │   └── audit.json            # Outbound message audit trail (last 1000)
+    ├── logs/
+    │   ├── bridge.log            # Current log (max 10MB)
+    │   ├── bridge.log.1          # Rotated logs
+    │   ├── bridge.log.2
+    │   └── bridge.log.3
+    └── runtime/
+        ├── bridge.pid            # Process ID file
+        └── status.json           # { running, pid, runId, startedAt, lastExitReason }
 ```
 
 ---
